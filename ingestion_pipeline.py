@@ -185,4 +185,8 @@ class VectorStore:
         self.vectorizer = data['vectorizer']
         print(f"Vector store loaded from {filepath}")
 
-                 
+
+if __name__ == "__main__":
+    documents = [
+        
+    ]                 
