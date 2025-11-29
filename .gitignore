@@ -1,1 +1,4 @@
 /ragvenv
+ingestion/__pycache__/
+ingestion/__init__.py
+ingestion/**/__pycache__/
