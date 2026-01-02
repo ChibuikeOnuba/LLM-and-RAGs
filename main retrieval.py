@@ -58,4 +58,18 @@ result = model.invoke(messages)
 print("\n -------------------Generated Respone-----------------------------")
 
 print(f"Content: {result.content}")
-print(result)
+
+print("\n -------------------Token Usage-----------------------------")
+
+if hasattr(result, 'usage_metadata') and result.usage_metadata is not None:
+    prompt_tokens = result.usage_metadata.get('prompt_tokens', 0)
+    completion_tokens = result.usage_metadata.get('completion_tokens', 0)
+    total_tokens = result.usage_metadata.get('total_tokens', 0)
+    
+    # Calculate cost (GPT-4 pricing example)
+    input_cost = prompt_tokens * 0.00003  # $0.03 per 1K tokens
+    output_cost = completion_tokens * 0.00006  # $0.06 per 1K tokens
+    total_cost = input_cost + output_cost
+    
+    print(f"Cost for this query: ${total_cost:.4f}")
+    print(f"Tokens used: {total_tokens}")
