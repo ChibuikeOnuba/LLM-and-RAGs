@@ -16,57 +16,67 @@ db = Chroma(
     collection_metadata={"hnsw:space":"cosine"}
 )
 
-#take user input
-print("Enter query")
-query = str(input())
 
 #Create a chatOpenAI model
 model = ChatOpenAI(model="gpt-4o")
 
 chat_history = []
 
+print("Enter query")
+query = str(input())
+
 def ask_question(user_question):
-    print(f"\n---------- You asked {user_question}-----------------")
+    print(f"\n---------- You asked \"{user_question}\"-----------------")
 
-    if chat_history:
-        #ask AI to make the question standalone
+    while True:
+
+        if chat_history:
+            #ask AI to make the question standalone
+            messages = [
+                SystemMessage(content="Given the chat history, rewrite the new question to be standalone and seachable. Just return the rewritten question")
+                ] + chat_history + [
+                    HumanMessage(content=f"New Question: {user_question}")
+                ]  
+            result = model.invoke(messages)
+            user_question = result.content.strip() if isinstance(result.content, str) else str(result.content).strip()
+        else:
+            user_question = user_question
+
+        print(f"Searching for: {user_question}")
+
+        #search vector store
+        retriever = db.as_retriever(search_kwargs={"k":3})
+        relevant_docs = retriever.invoke(user_question)
+
+        print("\n----------------------------Context---------------------------")
+        for i, doc in enumerate(relevant_docs, 1):
+            print(f"Document {i}:\n{doc.page_content[:1000]}\n")
+
+        combined_input = f"""Based on the following documents, please answer this question: {user_question}
+
+        Documents:
+        {'chr(10)'.join([f"-{doc.page_content}" for doc in relevant_docs])}
+
+        Please provide a clear, helpful answer using only the inforamtion from these documents. If you can't find the answer in the documents, say "I dont have the answer based on the provided documents"""
+
+
         messages = [
-            SystemMessage(content="Given the chat history, rewrite the new question to be standalone and seachable. Just return the rewritten question")
-            ] + chat_history + [
-                HumanMessage(content=f"New Question: {user_question}")
-            ]
-        
+            SystemMessage(content="You are a helpful assistant"),
+            HumanMessage(content=combined_input)
+        ]
+
         result = model.invoke(messages)
-        search_question = result.content.strip() if isinstance(result.content, str) else str(result.content).strip()
-        print(f"Searching for: {search_question}")
-    else:
-        search_question = user_question
-        
 
-    #search vector store
-    retriever = db.as_retriever(search_kwargs={"k":3})
-    relevant_docs = retriever.invoke(search_question)
-
-    print("\n----------------------------Context---------------------------")
-    for i, doc in enumerate(relevant_docs, 1):
-        print(f"Document {i}:\n{doc.page_content[100]}\n")
-
-    combined_input = f"""Based on the following documents, please answer this question: {search_question}
-
-    Documents:
-    {'chr(10)'.join([f"-{doc.page_content}" for doc in relevant_docs])}
-
-    Please provide a clear, helpful answer using only the inforamtion from these documents. If you can't find the answer in the documents, say "I dont have the answer based on the provided documents"""
+        if user_question.lower() in ['quit', 'exit', 'q']:
+            print("Ending conversation !")
+            break
 
 
-    messages = [
-        SystemMessage(content="You are a helpful assistant"),
-        HumanMessage(content=combined_input)
-    ]
+        #Display the full result and content only
+        print("\n -------------------Generated Respone-----------------------------")
 
-    result = model.invoke(messages)
+        print(f"Content: {result.content}")
 
-    #Display the full result and content only
-    print("\n -------------------Generated Respone-----------------------------")
+#take user input
+ask_question(query)
 
-    print(f"Content: {result.content}")
